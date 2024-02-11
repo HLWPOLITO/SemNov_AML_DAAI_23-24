@@ -2,7 +2,7 @@
 
 ##The original reference code from
 SemNov_AML_DAAI_23-24: https://github.com/antoalli/SemNov_AML_DAAI_23-24
-
+OpenShape demo support: https://huggingface.co/OpenShape/openshape-demo-support/tree/main/openshape
 
 ## Introduction
 
@@ -88,7 +88,10 @@ Details:
  - training output is stored in `outputs/<exp_name>`. 
 
 ### Checkpoints
-For the 3DOS baseline and the faliure cases analyses:
+For the OpenShape models:
+G14: https://huggingface.co/OpenShape/openshape-pointbert-vitg14-rgb/tree/main
+L14: https://huggingface.co/OpenShape/openshape-pointbert-vitl14-rgb/tree/main
+B32: https://huggingface.co/OpenShape/openshape-pointbert-vitb32-rgb/tree/main
 
 ### Eval 
 
