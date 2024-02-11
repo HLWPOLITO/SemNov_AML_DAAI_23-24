@@ -6,15 +6,21 @@ SemNov_AML_DAAI_23-24: https://github.com/antoalli/SemNov_AML_DAAI_23-24
 
 ## Introduction
 
-This code allows to replicate all the experiments and reproduce all the results that we included in our paper. We perform our experiments on the Google Colab environment.
+This code allows to replicate all the experiments and reproduce all the results that we included in our project report. 
 
 ### Requirements
-We perform our experiments with PyTorch 1.9.1+cu111 and Python 3.7. To install all the required packages simply run:
-
+We perform our experiments on the Google Colab environment.
+For the 3DOS bechmark and the faliure cases analyses:
 ```bash
-pip install -r requirements.txt
+!pip install timm==0.5.4 wandb tqdm h5py==3.6.0 protobuf==3.20.1 lmdb==1.2.1 msgpack-numpy==0.4.7.1 ninja==1.10.2.2 scikit-learn
+!pip install "https://github.com/unlimblue/KNN_CUDA/releases/download/0.2/KNN_CUDA-0.2-py3-none-any.whl"
 ```
-
+For the OpenShape test:
+```bash
+!pip install timm==0.5.4 wandb tqdm h5py==3.6.0 protobuf==3.20.1 lmdb==1.2.1 msgpack-numpy==0.4.7.1 ninja==1.10.2.2 scikit-learn
+!pip install huggingface.hub wandb torch_redstone numpy dgl einops utils torchlars
+!pip install "https://github.com/unlimblue/KNN_CUDA/releases/download/0.2/KNN_CUDA-0.2-py3-none-any.whl"
+```
 **Additional libraries** 
 
 N.B. to install PointNet++ ops the system-wide CUDA version must match the PyTorch one (CUDA 11 in this case).
