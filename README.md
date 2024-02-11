@@ -6,7 +6,11 @@ SemNov_AML_DAAI_23-24: https://github.com/antoalli/SemNov_AML_DAAI_23-24
 
 ## Introduction
 
-This code allows to replicate all the experiments and reproduce all the results that we included in our project report. 
+This code allows to replicate all the experiments and reproduce all the results that we included in our project report.
+
+## Documentation
+
+The original file 'trainer_cla_md' and 'ood_utils.py' files inside the folder were replaced for the faliure cases analyses. 
 
 ### Requirements
 We perform our experiments on the Google Colab environment.
@@ -23,21 +27,13 @@ For the OpenShape test:
 !pip install huggingface.hub wandb torch_redstone numpy dgl einops utils torchlars
 !pip install "https://github.com/unlimblue/KNN_CUDA/releases/download/0.2/KNN_CUDA-0.2-py3-none-any.whl"
 ```
-**Additional libraries** 
-
-N.B. to install PointNet++ ops the system-wide CUDA version must match the PyTorch one (CUDA 11 in this case).
-
-```bash
-pip install "git+https://github.com/erikwijmans/Pointnet2_PyTorch.git#egg=pointnet2_ops&subdirectory=pointnet2_ops_lib"
-pip install "https://github.com/unlimblue/KNN_CUDA/releases/download/0.2/KNN_CUDA-0.2-py3-none-any.whl"
-```
 
 ### Data
 Use the prepared script to download all datasets. 
 
 ```bash
 chmod +x download_data.sh
-./download_data.sh
+!sh download_data.sh
 ```
 
 A common root for all datasets will be created in project dir, by default named *3D_OS_release_data* .
@@ -89,9 +85,12 @@ Details:
    in each experiments there are two different sets of unknown classes.
  - training output is stored in `outputs/<exp_name>`. 
 
+### Checkpoints
+For the 3DOS baseline and the faliure cases analyses:
+
 ### Eval 
 
-For the 3DOS bechmark and the faliure cases analyses:
+For the 3DOS baseline and the faliure cases analyses:
 
 ```bash
 # multiple gpus
@@ -105,6 +104,7 @@ For the OpenShape:
 !python Openshape_test_B32.py --config cfgs/dgcnn-cla.yaml --num_workers 2 --src SR1 --exp_name Openshape_test_B32 --checkpoints_dir pointbert-vitb32-rgb --ckpt_path pointbert-vitb32-rgb/model.pt --script_mode eval
 
 ```
+The Openshape fine-tuning only has Evaluation part
 
 Example output:
 ```bash
