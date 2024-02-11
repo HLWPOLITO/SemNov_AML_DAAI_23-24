@@ -1,5 +1,6 @@
 import torch.nn.functional as F
 import torch.nn as nn
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from datasets.sncore_4k import *
 # noinspection PyUnresolvedReferences
@@ -144,13 +145,14 @@ def get_simclr_proj(model, loader):
     all_labels = torch.cat(all_labels)
     return all_proj, all_labels
 
-
+####
 @torch.no_grad()
 def get_network_output(model, loader, softmax=True):
     """ DDP impl """
     all_logits = []
     all_pred = []
     all_labels = []
+    all_points = []
     model.eval()
     for i, batch in enumerate(tqdm(loader, disable=DISABLE_TQDM), 0):
         points, labels = batch[0], batch[1]
@@ -167,10 +169,12 @@ def get_network_output(model, loader, softmax=True):
         _, pred = logits.data.max(1)
         all_pred.append(pred)
         all_labels.append(labels)
+        all_points.append(points)
     all_logits = torch.cat(all_logits, dim=0)
     all_pred = torch.cat(all_pred, dim=0)
     all_labels = torch.cat(all_labels, dim=0)
-    return all_logits, all_pred, all_labels
+    all_points = torch.cat(all_points, dim=0)
+    return all_logits, all_pred, all_labels, all_points
 
 
 @torch.no_grad()
@@ -205,6 +209,7 @@ def get_penultimate_feats(model, loader):
     """ DDP impl """
     all_feats = []
     all_labels = []
+    all_points = []
     model.eval()
     for i, batch in enumerate(tqdm(loader, disable=DISABLE_TQDM), 0):
         points, labels = batch[0], batch[1]
@@ -217,10 +222,135 @@ def get_penultimate_feats(model, loader):
             labels = gather(labels, dim=0)
         all_feats.append(feats)
         all_labels.append(labels)
+        all_points.append(points)
     all_feats = torch.cat(all_feats)
     all_labels = torch.cat(all_labels, dim=0)
-    return all_feats, all_labels
+    all_points = torch.cat(all_points, dim=0)
+    return all_feats, all_labels,all_points
+######ZUO####
+def failure_analysis_MSP(tar_conf, tar_preds, tar_labels, tar_points, src_conf, val_conf):
+    srcScore = to_numpy(src_conf)
+    valScore = to_numpy(val_conf)
+    tarScore = to_numpy(tar_conf)
+    tarPred = to_numpy(tar_preds)
+    tarLabel = to_numpy(tar_labels)
+    tarPoints = [t.cpu().numpy() for t in tar_points]
 
+    tar1Label_string = ["bed", "toilet", "desk", "display"]
+    tar2Label_string = ["bag", "bin", "box", "cabinet", "pillow"]
+    realLabel_string = ["chair", "shelf", "door", "sink", "sofa"]
+
+    indeces = []
+
+    #computing threshold from validation set
+    for count in range(len(valScore)):
+            val_percentile = (valScore < valScore[count]).sum() / len(valScore)
+            if val_percentile < 0.10:
+                thresh = valScore[count]
+                threshold = np.mean(valScore[valScore > thresh])
+                break
+
+    print('*********************************************')
+    print('Average ID samples score = ', [np.mean(srcScore)])
+    print('Average OOD samples score = ', [np.mean(tarScore)])
+    print('Threshold =', [threshold])
+    print('Examples of distance_based of misclassified cases:')
+    #plot misclassified OOD sample point cloud
+    for i in range(len(tarScore)):
+         if tarScore[i] > threshold:
+             indeces.append(i)
+             if i > 1 and i < 50:
+                  print('misclassified sample, prediction:', realLabel_string[tarPred[i]], 'true label:',
+                        tar1Label_string[tarLabel[i]])
+                  temp = tarPoints[i]
+                  round_tarScore = round(tarScore[i], 5)
+                  x = [vector[0] for vector in temp]
+                  y = [vector[1] for vector in temp]
+                  z = [vector[2] for vector in temp],
+                  fig = plt.figure()
+                  ax = fig.add_subplot(111, projection='3d')
+                  ax.view_init(-120, 20)            #adjust view angle
+                  ax.axis("off")
+                  ax.scatter(x, y, z, s=1)
+                  ax.title.set_text(
+                      f'pred_{realLabel_string[tarPred[i]]}_real_{tar1Label_string[tarLabel[i]]}_conf{round_tarScore}_{i}')
+                  fig.savefig(
+                      f'/content/drive/My Drive/SemNov_AML_DAAI_23-24/img_MSP/pred_{realLabel_string[tarPred[i]]}_real_{tar1Label_string[tarLabel[i]]}_{i}.jpg')
+
+    mis_tar = len(indeces)
+    total_tar = len(tarScore)
+
+    print('misclassified sample:', [mis_tar], 'out of', [total_tar])
+    print('*********************************************')
+
+
+def failure_analysis_distance_based(mode_num, val_conf, src_conf, tar_conf, tar_preds, tar_labels, tar_points, tar_train_points):
+
+    trueLabel_string = ["chair", "shelf", "door", "sink", "sofa"]
+    tar1Label_string = ["bed", "toilet", "desk", "display"]
+    tar2Label_string = ["bag", "bin", "box", "cabinet", "pillow"]
+
+    valScore = to_numpy(val_conf)
+    srcScore = to_numpy(src_conf)
+    tarScore = to_numpy(tar_conf)
+    tarPred = to_numpy(tar_preds)
+    tarLabel = to_numpy(tar_labels)
+    tarPoints = [t.cpu().numpy() for t in tar_points]
+    tarTrainPoints = tar_train_points
+
+    if mode_num == 1:
+        for count in range(len(valScore)):
+            val_percentile = (valScore < valScore[count]).sum() / len(valScore)
+            if val_percentile < 0.10:
+                thresh = valScore[count]
+                threshold = np.mean(valScore[valScore > thresh])
+                break
+
+    print('*********************************************')
+    print('Average ID samples score= ', [np.mean(srcScore)])
+    print('Average OOD samples score= ', [np.mean(tarScore)])
+    print('Threshold =', [threshold])
+    print('Examples of distance_based of misclassified cases:')
+
+    indeces = []
+    # plot misclassified OOD sample point cloud and its nearest training sample point cloud
+    for i in range(len(tarScore)):
+        if tarScore[i] > threshold:
+            indeces.append(i)
+            if i > 50 and i < 100:
+                print('misclassified sample, prediction:', trueLabel_string[tarPred[i]], 'true label:',
+                      tar1Label_string[tarLabel[i]])
+                dist = 1 / tarScore[i]
+                round_dist=round(dist,5)
+                fig = plt.figure()
+                fig.suptitle(
+                    f'pred_{trueLabel_string[tarPred[i]]}_real_{tar1Label_string[tarLabel[i]]}_distance_{round_dist}_{i}')
+                ax1 = fig.add_subplot(1, 2, 1, projection='3d')
+                temp = tarPoints[i]
+                x = [vector[0] for vector in temp]
+                y = [vector[1] for vector in temp]
+                z = [vector[2] for vector in temp],
+                ax1.view_init(-120, 20)             #adjust view angle
+                ax1.axis("off")
+                ax1.scatter(x, y, z, s=1, color='red')
+                ax1.title.set_text('Misclassified sample')
+                ax2 = fig.add_subplot(1, 2, 2, projection='3d')
+                temp = tarTrainPoints[i]
+                x = [vector[0] for vector in temp]
+                y = [vector[1] for vector in temp]
+                z = [vector[2] for vector in temp],
+                ax2.view_init(-120, 20)            #adjust view angle
+                ax2.axis("off")
+                ax2.scatter(x, y, z, s=1)
+                ax2.title.set_text('Nearest training sample')
+                fig.savefig(
+                    f'/content/drive/My Drive/SemNov_AML_DAAI_23-24/img_dist_based/pred_{trueLabel_string[tarPred[i]]}_real_{tar1Label_string[tarLabel[i]]}_{i}.jpg')
+
+    mis_tar = len(indeces)
+    total_tar = len(tarScore)
+
+    print('misclassified sample:', [mis_tar], 'out of', [total_tar])
+    print('*********************************************')
 
 def iterate_data_odin(model, loader, epsilon=0.0, temper=1000):
     """
@@ -434,7 +564,7 @@ def get_ood_metrics(src_scores, tar_scores, src_label=1):
     return calc_metrics(scores, labels)
 
 
-def eval_ood_sncore(scores_list, preds_list=None, labels_list=None, src_label=1, silent=False):
+def eval_ood_sncore(mode_num, scores_list, preds_list=None, labels_list=None, points_list=None , src_label=1, silent=False):
     """
     conf_list: [SRC, TAR1, TAR2]
     preds_list: [SRC, TAR1, TAR2]
@@ -454,9 +584,19 @@ def eval_ood_sncore(scores_list, preds_list=None, labels_list=None, src_label=1,
     if not silent:
         print(f"AUROC - Src label: {src_label}, Tar label: {tar_label}")
 
-    src_conf, src_preds, src_labels = scores_list[0], preds_list[0], labels_list[0]
-    tar1_conf, _, _ = scores_list[1], preds_list[1], labels_list[1]
-    tar2_conf, _, _ = scores_list[2], preds_list[2], labels_list[2]
+    if mode_num == 0 or mode_num == 1:
+     src_conf, src_preds, src_labels = scores_list[0], preds_list[0], labels_list[0]
+     tar1_conf, tar1_preds, tar1_labels, tar1_points = scores_list[1], preds_list[1], labels_list[1], points_list[1]
+     tar2_conf, tar2_preds, tar2_labels, tar2_points = scores_list[2], preds_list[2], labels_list[2], points_list[2]
+     val_conf = scores_list[3]
+     if mode_num == 1:
+        tar1_train_points = points_list[3]
+    elif mode_num == 2:
+        src_conf, src_preds, src_labels = scores_list[0], preds_list[0], labels_list[0]
+        tar1_conf, tar1_preds, tar1_labels = scores_list[1], preds_list[1], labels_list[1]
+        tar2_conf, tar2_preds, tar2_labels = scores_list[2], preds_list[2], labels_list[2]
+
+
 
     # compute ID test accuracy
     src_acc, src_bal_acc = -1, -1
@@ -481,7 +621,13 @@ def eval_ood_sncore(scores_list, preds_list=None, labels_list=None, src_label=1,
 
     # N.B. get_ood_metrics reports inverted AUPR_IN and AUPR_OUT results
     # as we use label 1 for IN-DISTRIBUTION and thus we consider it positive. 
-    # the ood_metrics library argue to use 
+    # the ood_metrics library argue to use
+   ###########
+    if mode_num == 0:
+        failure_analysis_MSP(tar1_conf, tar1_preds, tar1_labels, tar1_points, src_conf, val_conf)
+    elif mode_num == 1:
+        print('--distance based failure analysis--')
+        failure_analysis_distance_based(mode_num, val_conf, src_conf, tar1_conf, tar1_preds, tar1_labels, tar1_points, tar1_train_points)
 
     if not silent:
         print_ood_output(res_tar1, res_tar2, res_big_tar)
