@@ -11,6 +11,7 @@ This code allows to replicate all the experiments and reproduce all the results 
 ### Requirements
 We perform our experiments on the Google Colab environment.
 For the 3DOS bechmark and the faliure cases analyses:
+
 ```bash
 !pip install timm==0.5.4 wandb tqdm h5py==3.6.0 protobuf==3.20.1 lmdb==1.2.1 msgpack-numpy==0.4.7.1 ninja==1.10.2.2 scikit-learn
 !pip install "https://github.com/unlimblue/KNN_CUDA/releases/download/0.2/KNN_CUDA-0.2-py3-none-any.whl"
