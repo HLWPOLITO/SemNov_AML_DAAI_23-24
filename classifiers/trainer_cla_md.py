@@ -450,7 +450,7 @@ def train(opt, config):
     if rank == 0:
         logger.cprint(f"Training finished - best test acc: {best_acc:.4f} at ep.: {best_epoch}, time: {train_time}")
 
-
+#####ZUO####SPLIT THE DATASET
 def eval_ood_md2sonn(opt, config):
     print(f"Arguments: {opt}")
     set_random_seed(opt.seed)
@@ -470,14 +470,34 @@ def eval_ood_md2sonn(opt, config):
     }
 
     train_loader, _ = get_md_eval_loaders(opt)
-    if opt.src == 'SR1':
+    if opt.src == 'SR1' :
         print("Src is SR1\n")
-        id_loader = DataLoader(ScanObject(class_choice="sonn_2_mdSet1", **sonn_args), **dataloader_config)
+        id_dataset_all = ScanObject(class_choice="sonn_2_mdSet1", **sonn_args) # full dataset
+        id_size = int(0.9 * len(id_dataset_all))#90%
+        val_size = len(id_dataset_all) - id_size #10%
+        id_dataset_thresh, id_dataset = torch.utils.data.random_split(id_dataset_all, [val_size, id_size]) # split full dataset into validation and id datasets
+        id_loader = DataLoader(id_dataset, **dataloader_config) #90%dataset for validation
+        id_loader_thresh = DataLoader(id_dataset_thresh, **dataloader_config)  # rest 10%dataset for threshold computation
         ood1_loader = DataLoader(ScanObject(class_choice="sonn_2_mdSet2", **sonn_args), **dataloader_config)
+#####ZUO####
+    #id_dataset_all = ScanObject(class_choice="sonn_2_mdSet1", **sonn_args)  # full dataset
+    #id_num = int(0.9 * len(id_dataset_all))            #90%
+    #id_thresh_comput_num = len(id_dataset_all) - id_num       #10%
+    #id_thresh_compute_dataset, id_dataset = torch.utils.data.random_split(id_dataset_all, [id_thresh_comput_num,id_num])  # split full dataset into validation and id datasets
+    #id_loader = DataLoader(id_dataset, **dataloader_config)  #90%dataset for validation
+    #id_loader_thresh = DataLoader(id_thresh_compute_dataset, **dataloader_config)  # rest 10%dataset for threshold computation
+    #ood1_loader = DataLoader(ScanObject(class_choice="sonn_2_mdSet2", **sonn_args), **dataloader_config)
+ #####ZUO####
     elif opt.src == 'SR2':
         print("Src is SR2\n")
-        id_loader = DataLoader(ScanObject(class_choice="sonn_2_mdSet2", **sonn_args), **dataloader_config)
+        id_dataset_all = DataLoader(ScanObject(class_choice="sonn_2_mdSet2", **sonn_args), **dataloader_config)
+        id_size = int(0.9 * len(id_dataset_all))  # 90%
+        val_size = len(id_dataset_all) - id_size  # 10%
+        id_dataset_thresh, id_dataset = torch.utils.data.random_split(id_dataset_all, [val_size, id_size])  # split full dataset into validation and id datasets
+        id_loader = DataLoader(id_dataset, **dataloader_config)  # 90%dataset for validation
+        id_loader_thresh = DataLoader(id_dataset_thresh, **dataloader_config)  # rest 10%dataset for threshold computation
         ood1_loader = DataLoader(ScanObject(class_choice="sonn_2_mdSet1", **sonn_args), **dataloader_config)
+
     else:
         raise ValueError(f"OOD evaluation - wrong src: {opt.src}")
 
@@ -494,23 +514,30 @@ def eval_ood_md2sonn(opt, config):
     print(f"Model params count: {count_parameters(model) / 1000000 :.4f} M")
     print("Load weights: ", model.load_state_dict(ckt_weights, strict=True))
     model = model.cuda().eval()
+#####ZUO####
+    val_logits, _ , _ , _ = get_network_output(model, id_loader_thresh)
+    src_logits, src_pred, src_labels, src_points = get_network_output(model, id_loader)
+    tar1_logits, tar1_pred, tar1_labels, tar1_points = get_network_output(model, ood1_loader)
+    tar2_logits, tar2_pred, tar2_labels, tar2_points = get_network_output(model, ood2_loader)
 
-    src_logits, src_pred, src_labels = get_network_output(model, id_loader)
-    tar1_logits, _, _ = get_network_output(model, ood1_loader)
-    tar2_logits, _, _ = get_network_output(model, ood2_loader)
-
+    
+#####ZUO####
     # MSP
     print("\n" + "#" * 80)
     print("Computing OOD metrics with MSP normality score...")
     src_MSP_scores = F.softmax(src_logits, dim=1).max(1)[0]
     tar1_MSP_scores = F.softmax(tar1_logits, dim=1).max(1)[0]
     tar2_MSP_scores = F.softmax(tar2_logits, dim=1).max(1)[0]
+    val_MSP_scores = F.softmax(val_logits, dim=1).max(1)[0]
     eval_ood_sncore(
-        scores_list=[src_MSP_scores, tar1_MSP_scores, tar2_MSP_scores],
-        preds_list=[src_pred, None, None],  # computes also MSP accuracy on ID test set
-        labels_list=[src_labels, None, None],  # computes also MSP accuracy on ID test set
+        mode_num = 0,
+        scores_list=[src_MSP_scores, tar1_MSP_scores, tar2_MSP_scores, val_MSP_scores],
+        preds_list=[src_pred, tar1_pred, tar2_pred],  # computes also MSP accuracy on OOD test set
+        labels_list=[src_labels, tar1_labels, tar2_labels],  # computes also MSP accuracy on ID test set
+        points_list=[src_points, tar1_points, tar2_points],
         src_label=1)
     print("#" * 80)
+
 
     # MLS
     print("\n" + "#" * 80)
@@ -519,6 +546,7 @@ def eval_ood_md2sonn(opt, config):
     tar1_MLS_scores = tar1_logits.max(1)[0]
     tar2_MLS_scores = tar2_logits.max(1)[0]
     eval_ood_sncore(
+        mode_num = 2,
         scores_list=[src_MLS_scores, tar1_MLS_scores, tar2_MLS_scores],
         preds_list=[src_pred, None, None],  # computes also MSP accuracy on ID test set
         labels_list=[src_labels, None, None],  # computes also MSP accuracy on ID test set
@@ -532,6 +560,7 @@ def eval_ood_md2sonn(opt, config):
     tar2_entropy_scores = 1 / logits_entropy_loss(tar2_logits)
     print("Computing OOD metrics with entropy normality score...")
     eval_ood_sncore(
+        mode_num=2,
         scores_list=[src_entropy_scores, tar1_entropy_scores, tar2_entropy_scores],
         preds_list=[src_pred, None, None],  # computes also MSP accuracy on ID test set
         labels_list=[src_labels, None, None],  # computes also MSP accuracy on ID test set
@@ -540,7 +569,7 @@ def eval_ood_md2sonn(opt, config):
 
 
     # FEATURES EVALUATION
-    eval_OOD_with_feats(model, train_loader, id_loader, ood1_loader, ood2_loader, save_feats=opt.save_feats)
+    eval_OOD_with_feats(model, train_loader, id_loader, ood1_loader, ood2_loader, id_loader_thresh, save_feats=opt.save_feats)
 
     # ODIN
     print("\n" + "#" * 80)
@@ -548,7 +577,7 @@ def eval_ood_md2sonn(opt, config):
     src_odin = iterate_data_odin(model, id_loader)
     tar1_odin = iterate_data_odin(model, ood1_loader)
     tar2_odin = iterate_data_odin(model, ood2_loader)
-    eval_ood_sncore(scores_list=[src_odin, tar1_odin, tar2_odin], src_label=1)
+    eval_ood_sncore(mode_num = 2,scores_list=[src_odin, tar1_odin, tar2_odin], src_label=1)
     print("#" * 80)
 
     # Energy
@@ -557,7 +586,7 @@ def eval_ood_md2sonn(opt, config):
     src_energy = iterate_data_energy(model, id_loader)
     tar1_energy = iterate_data_energy(model, ood1_loader)
     tar2_energy = iterate_data_energy(model, ood2_loader)
-    eval_ood_sncore(scores_list=[src_energy, tar1_energy, tar2_energy], src_label=1)
+    eval_ood_sncore(mode_num = 2,scores_list=[src_energy, tar1_energy, tar2_energy], src_label=1)
     print("#" * 80)
 
     # GradNorm
@@ -566,7 +595,7 @@ def eval_ood_md2sonn(opt, config):
     src_gradnorm = iterate_data_gradnorm(model, id_loader)
     tar1_gradnorm = iterate_data_gradnorm(model, ood1_loader)
     tar2_gradnorm = iterate_data_gradnorm(model, ood2_loader)
-    eval_ood_sncore(scores_list=[src_gradnorm, tar1_gradnorm, tar2_gradnorm], src_label=1)
+    eval_ood_sncore(mode_num = 2,scores_list=[src_gradnorm, tar1_gradnorm, tar2_gradnorm], src_label=1)
     print("#" * 80)
 
     # React with id-dependent threshold
@@ -578,12 +607,12 @@ def eval_ood_md2sonn(opt, config):
     src_react = iterate_data_react(model, id_loader, threshold=threshold)
     tar1_react = iterate_data_react(model, ood1_loader, threshold=threshold)
     tar2_react = iterate_data_react(model, ood2_loader, threshold=threshold)
-    eval_ood_sncore(scores_list=[src_react, tar1_react, tar2_react], src_label=1)
+    eval_ood_sncore(mode_num = 2,scores_list=[src_react, tar1_react, tar2_react], src_label=1)
     print("#" * 80)
     return
 
 
-def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loader, save_feats=None):
+def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loader,id_val_loader, save_feats=None):
     from knn_cuda import KNN
     knn = KNN(k=1, transpose_mode=True)
 
@@ -591,10 +620,11 @@ def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loade
     print("Computing OOD metrics with distance from train features...")
 
     # extract penultimate features, compute distances
-    train_feats, train_labels = get_penultimate_feats(model, train_loader)
-    src_feats, src_labels = get_penultimate_feats(model, src_loader)
-    tar1_feats, tar1_labels = get_penultimate_feats(model, tar1_loader)
-    tar2_feats, tar2_labels = get_penultimate_feats(model, tar2_loader)
+    train_feats, train_labels, train_points = get_penultimate_feats(model, train_loader)
+    src_feats, src_labels, src_points = get_penultimate_feats(model, src_loader)
+    tar1_feats, tar1_labels, tar1_points = get_penultimate_feats(model, tar1_loader)
+    tar2_feats, tar2_labels, tar2_points = get_penultimate_feats(model, tar2_loader)
+    val_feats, val_labels, val_points = get_penultimate_feats(model, id_val_loader)
     train_labels = train_labels.cpu().numpy()
 
     labels_set = set(train_labels)
@@ -627,21 +657,36 @@ def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loade
     src_ids = src_ids.squeeze().cpu()  # index of nearest training sample
     src_scores = 1 / src_dist
     src_pred = np.asarray([train_labels[i] for i in src_ids])  # pred is label of nearest training sample
+    #######ZUO#####
+    # threshold computation dataset
+    val_dist, val_ids = knn(train_feats.unsqueeze(0), val_feats.unsqueeze(0))
+    val_dist = val_dist.squeeze().cpu()
+    val_ids = val_ids.squeeze().cpu()  # index of nearest training sample
+    val_scores = 1 / val_dist
+    val_pred = np.asarray([train_labels[i] for i in val_ids])  # pred is label of nearest training sample
 
     # OOD tar1
-    tar1_dist, _ = knn(train_feats.unsqueeze(0), tar1_feats.unsqueeze(0))
+    tar1_dist, tar1_ids = knn(train_feats.unsqueeze(0), tar1_feats.unsqueeze(0))
     tar1_dist = tar1_dist.squeeze().cpu()
+    tar1_ids = tar1_ids.squeeze().cpu()  # index of nearest training sample
     tar1_scores = 1 / tar1_dist
+    tar1_pred = np.asarray([train_labels[i] for i in tar1_ids])  # pred is label of nearest training sample
+    trainPoints = [t.cpu().numpy() for t in train_points]
+    tar1_train_points = np.asarray([trainPoints[i] for i in tar1_ids]) # gets the corresponding pointclouds of the closest training sample
 
     # OOD tar2
-    tar2_dist, _ = knn(train_feats.unsqueeze(0), tar2_feats.unsqueeze(0))
+    tar2_dist, tar2_ids = knn(train_feats.unsqueeze(0), tar2_feats.unsqueeze(0))
     tar2_dist = tar2_dist.squeeze().cpu()
+    tar2_ids = tar2_ids.squeeze().cpu()  # index of nearest training sampl
     tar2_scores = 1 / tar2_dist
+    tar2_pred = np.asarray([train_labels[i] for i in tar2_ids])  # pred is label of nearest training sample
 
     eval_ood_sncore(
-        scores_list=[src_scores, tar1_scores, tar2_scores],
-        preds_list=[src_pred, None, None],  # [src_pred, None, None],
-        labels_list=[src_labels, None, None],  # [src_labels, None, None],
+        mode_num=1,
+        scores_list=[src_scores, tar1_scores, tar2_scores, val_scores],
+        preds_list=[src_pred, tar1_pred, tar2_pred],
+        labels_list=[src_labels, tar1_labels, tar2_labels],
+        points_list=[src_points, tar1_points, tar2_points, tar1_train_points],
         src_label=1  # confidence should be higher for ID samples
     )
 
@@ -664,13 +709,14 @@ def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loade
     tar2_scores = 1 / tar2_dist
 
     eval_ood_sncore(
+        mode_num=2,
         scores_list=[src_scores, tar1_scores, tar2_scores],
         preds_list=[src_pred, None, None],
         labels_list=[src_labels, None, None],
         src_label=1  # confidence should be higher for ID samples
     )
 
-    ################################################
+    ###############################################
     print("\nCosine similarities on the hypersphere:")
     # cosine sim in a normalized space
     train_feats = F.normalize(train_feats, p=2, dim=1)
@@ -681,8 +727,8 @@ def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loade
     tar1_scores, _ = torch.mm(tar1_feats, train_feats.t()).max(1)
     tar2_scores, _ = torch.mm(tar2_feats, train_feats.t()).max(1)
     src_pred = np.asarray([train_labels[i] for i in src_ids])  # pred is label of nearest training sample
-
     eval_ood_sncore(
+        mode_num=2,
         scores_list=[(0.5 * src_scores + 0.5).cpu(), (0.5 * tar1_scores + 0.5).cpu(), (0.5 * tar2_scores + 0.5).cpu()],
         preds_list=[src_pred, None, None],  # [src_pred, None, None],
         labels_list=[src_labels, None, None],  # [src_labels, None, None],
@@ -699,6 +745,7 @@ def eval_OOD_with_feats(model, train_loader, src_loader, tar1_loader, tar2_loade
     tar2_scores, _ = torch.mm(tar2_feats, prototypes.t()).max(1)
     src_pred = np.asarray([train_labels[i] for i in src_ids])  # pred is label of nearest training sample
     eval_ood_sncore(
+        mode_num = 2,
         scores_list=[(0.5 * src_scores + 0.5).cpu(), (0.5 * tar1_scores + 0.5).cpu(), (0.5 * tar2_scores + 0.5).cpu()],
         preds_list=[src_pred, None, None],
         labels_list=[src_labels, None, None],
