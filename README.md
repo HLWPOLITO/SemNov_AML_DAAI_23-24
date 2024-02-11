@@ -1,16 +1,12 @@
 #Exploring the Depths of 3D Semantic Novelty Detection
-##The reference code from
-SemNov_AML_DAAI_23-24:https://github.com/antoalli/SemNov_AML_DAAI_23-24
 
+##The original reference code from
+SemNov_AML_DAAI_23-24: https://github.com/antoalli/SemNov_AML_DAAI_23-24
 
-**This work has been accepted to NeurIPS 2022 Datasets and Benchmarks Track.**
-
-> **Abstract:** *In the last years, there has been significant progress in the field of 3D learning on classification, detection and segmentation problems. The vast majority of the existing studies focus on canonical closed-set conditions, neglecting the intrinsic open nature of the real-world. This limits the abilities of autonomous systems involved in safety-critical applications that require managing novel and unknown signals. In this context exploiting 3D data can be a valuable asset since it conveys rich information about the geometry of sensed objects and scenes. This paper provides the first broad study on Open Set 3D learning. We introduce a novel testbed with settings of increasing difficulty in terms of category semantic shift and cover both in-domain (synthetic-to-synthetic) and cross-domain (synthetic-to-real) scenarios. Moreover, we investigate the related out-of-distribution and Open Set 2D literature to understand if and how their most recent approaches are effective on 3D data. Our extensive benchmark positions several algorithms in the same coherent picture, revealing their strengths and limitations. The results of our analysis may serve as a reliable foothold for future tailored Open Set 3D models.*
 
 ## Introduction
 
-This code allows to replicate all the experiments and reproduce all the results that we included in
-our paper.
+This code allows to replicate all the experiments and reproduce all the results that we included in our paper. We perform our experiments on the Google Colab environment.
 
 ### Requirements
 We perform our experiments with PyTorch 1.9.1+cu111 and Python 3.7. To install all the required packages simply run:
@@ -107,33 +103,3 @@ to spreadsheet: 0.734540224202969,0.7904599659284497,0.7573800391095067,0.745788
 The output contains closed set accuracy on known classes (Clf Acc), balanced closed set accuracy
 (Clf Bal Acc) and 3 sets of open set performance results. In the paper we report AUROC 3 and FPR 3
 which refer to the scenario `(known) src -> unknown set 1 + unknown set 2`.
-
-## Replicating paper results
-
-In the following we report the commands necessary to replicate all of the main paper results (Table
-1 and 3). All experiments of the paper are repeated with the 3 seeds specified above and the results
-is averaged across the three runs.
-
-See [here](docs/paper_results_synth.md) for Synthetic Benchmark results replication and [here](docs/paper_results_real.md) for Synthetic to Real Benchmark. 
-
-## Citation 
-
-If you find our paper/code useful please consider citing our paper: 
-
-```
-@inproceedings{
-alliegro2022towards,
-title={Towards Open Set 3D Learning: Benchmarking and Understanding Semantic Novelty Detection on Pointclouds},
-author={Antonio Alliegro and Francesco Cappio Borlino and Tatiana Tommasi},
-booktitle={Thirty-sixth Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
-year={2022},
-url={https://openreview.net/forum?id=X2dHozbd1at}
-}
-```
-
-
-## This repo is still under construction
-- [x] Upload Code
-- [x] Upload Data
-- [ ] Acknowledgements
-- [x] Link to the arXiv and citation
