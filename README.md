@@ -58,10 +58,10 @@ In this repository we use PyTorch Distributed Training that assumes an environme
 ### Example
 ```bash
 # Original bash command from README with PyTorch DDP:
-python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
+!python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
 
 # [AML/DAAI STUDENT] What you should run on COLAB or single GPU environment:
-python classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
+!python classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
 ```
 The same also holds for the eval commands. 
 
@@ -72,7 +72,7 @@ Each experiment requires to choose a backbone (through the config file), a loss 
 
 ```bash
 # multiple gpus
-python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
+!python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE 
 ```
 
 Details: 
