@@ -10,6 +10,7 @@ This code allows to replicate all the experiments and reproduce all the results 
 
 ### Requirements
 We perform our experiments on the Google Colab environment.
+
 For the 3DOS bechmark and the faliure cases analyses:
 
 ```bash
@@ -90,9 +91,18 @@ Details:
 
 ### Eval 
 
+For the 3DOS bechmark and the faliure cases analyses:
+
 ```bash
 # multiple gpus
-python -m torch.distributed.launch --nproc_per_node=1 classifiers/trainer_cla.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SN1 --src SN1 --loss CE -mode eval --ckpt_path outputs/DGCNN_CE_SN1/models/model_last.pth
+!python classifiers/trainer_cla_md.py --config cfgs/dgcnn-cla.yaml --exp_name DGCNN_CE_SR1 --src SR1 --loss CE --checkpoints_dir AI_Results --ckpt_path AI_Results/DGCNN_CE_SR1/models/model_last.pth --script_mode evaloutputs/DGCNN_CE_SN1/models/model_last.pth
+
+```
+For the OpenShape:
+
+```bash
+#Evaluation for the B32 model
+!python Openshape_test_B32.py --config cfgs/dgcnn-cla.yaml --num_workers 2 --src SR1 --exp_name Openshape_test_B32 --checkpoints_dir pointbert-vitb32-rgb --ckpt_path pointbert-vitb32-rgb/model.pt --script_mode eval
 
 ```
 
