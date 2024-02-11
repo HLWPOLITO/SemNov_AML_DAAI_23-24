@@ -9,8 +9,10 @@ SemNov_AML_DAAI_23-24: https://github.com/antoalli/SemNov_AML_DAAI_23-24
 This code allows to replicate all the experiments and reproduce all the results that we included in our project report.
 
 ## Documentation
-
+For the baseline, we only cloned the code from https://github.com/antoalli/SemNov_AML_DAAI_23-24 in the colab and perform our experiment.
 The original file 'trainer_cla_md' and 'ood_utils.py' files inside the folder were replaced for the faliure cases analyses. 
+For the Openshape, we replaced the 'trainer_cla_md' with 'Openshape_test_B32.py'. All the python files are inside the folder ‘OpenShape’.
+Since the checkpoints files too large, we upload only the links of checkpoints.
 
 ### Requirements
 We perform our experiments on the Google Colab environment.
